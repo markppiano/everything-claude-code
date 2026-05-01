@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twinkle — Web Audio</title>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #171922;
+    --fg: #e9ecf1;
+    --muted: #8a90a2;
+    --accent: #7aa2ff;
+    --accent-2: #b18bff;
+    --border: #262a36;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+    gap: 28px;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  p.lead {
+    margin: 0;
+    color: var(--muted);
+    font-size: 16px;
+    text-align: center;
+    max-width: 520px;
+  }
+  .sequence {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    font-size: 14px;
+  }
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 520px;
+  }
+  @media (min-width: 640px) {
+    .buttons { grid-template-columns: repeat(4, 1fr); }
+  }
+  button {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--fg);
+    font: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 22px 18px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: transform 0.05s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  button:hover { border-color: var(--accent); }
+  button:active { transform: translateY(1px); }
+  button.playing {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, #1e2742, #171922);
+    box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.2);
+  }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  .wave {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 6px;
+  }
+  footer {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+  }
+  footer code {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Twinkle, Twinkle</h1>
+  <p class="lead">Tap a waveform to hear the opening line. Equal temperament, A4 = 440 Hz.</p>
+  <div class="sequence">C4 · C4 · G4 · G4 · A4 · A4 · G4</div>
+
+  <div class="buttons" id="buttons">
+    <button data-wave="sine"><span class="wave">∿ smooth</span>Sine</button>
+    <button data-wave="triangle"><span class="wave">△ mellow</span>Triangle</button>
+    <button data-wave="square"><span class="wave">▢ hollow</span>Square</button>
+    <button data-wave="sawtooth"><span class="wave">⩘ buzzy</span>Sawtooth</button>
+  </div>
+
+  <footer>Built with the Web Audio API · no dependencies</footer>
+</main>
+
+<script>
+  const NOTE_SEMITONES = {
+    C: 0, "C#": 1, Db: 1,
+    D: 2, "D#": 3, Eb: 3,
+    E: 4, Fb: 4, "E#": 5,
+    F: 5, "F#": 6, Gb: 6,
+    G: 7, "G#": 8, Ab: 8,
+    A: 9, "A#": 10, Bb: 10,
+    B: 11, Cb: 11, "B#": 12,
+  };
+
+  function noteToFrequency(note) {
+    const m = note.match(/^([A-Ga-g])([#b]?)(-?\d+)$/);
+    if (!m) throw new Error(`Invalid note: ${note}`);
+    const pitch = m[1].toUpperCase() + m[2];
+    const semitone = NOTE_SEMITONES[pitch];
+    const midi = (parseInt(m[3], 10) + 1) * 12 + semitone;
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  const TWINKLE = ["C4", "C4", "G4", "G4", "A4", "A4", "G4"];
+  const NOTE_DURATION = 0.5;
+  const GAP = 0.05;
+
+  let audioCtx = null;
+  let activeButton = null;
+
+  function getCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+
+  function playSequence(waveform, button) {
+    const ctx = getCtx();
+    if (ctx.state === "suspended") ctx.resume();
+
+    if (activeButton) activeButton.classList.remove("playing");
+    activeButton = button;
+    button.classList.add("playing");
+
+    const startAt = ctx.currentTime + 0.05;
+    TWINKLE.forEach((note, i) => {
+      const freq = noteToFrequency(note);
+      const t0 = startAt + i * (NOTE_DURATION + GAP);
+      const t1 = t0 + NOTE_DURATION;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = waveform;
+      osc.frequency.value = freq;
+
+      // Short attack/release envelope to avoid clicks.
+      const peak = 0.25;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(peak, t0 + 0.015);
+      gain.gain.setValueAtTime(peak, t1 - 0.04);
+      gain.gain.linearRampToValueAtTime(0, t1);
+
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t1 + 0.02);
+    });
+
+    const totalMs = (TWINKLE.length * (NOTE_DURATION + GAP)) * 1000;
+    setTimeout(() => {
+      if (activeButton === button) {
+        button.classList.remove("playing");
+        activeButton = null;
+      }
+    }, totalMs + 100);
+  }
+
+  document.getElementById("buttons").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-wave]");
+    if (!btn) return;
+    playSequence(btn.dataset.wave, btn);
+  });
+</script>
+</body>
+</html>
