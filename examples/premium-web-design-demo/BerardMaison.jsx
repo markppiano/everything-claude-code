@@ -1,0 +1,560 @@
+import React, { useState, useEffect, useRef } from "react";
+import * as THREE from "three";
+
+/**
+ * BÉRARD — a fictional fragrance house.
+ * Structural DNA: "Index Manuscript" — the entire page is one continuous
+ * letter from the (fictional) founder. One serif rhythm, top to bottom.
+ * Centerpiece: a deterministic SVG/CSS flacon (Spline fallback, by design)
+ * over a Three.js drifting scent-mist atmosphere.
+ */
+
+const OPENING =
+  "This is not a perfume. It is a letter I kept rewriting until it smelled like the thing I meant to say.";
+
+const REGISTER = [
+  ["Head", "Calabrian bergamot", "cold rind, struck flint"],
+  ["Head", "pink pepper", "a dry static before rain"],
+  ["Heart", "Florentine orris", "powder, cool stone, patience"],
+  ["Heart", "everlasting", "honey gone slightly to smoke"],
+  ["Base", "Virginia cedar", "the pencil shaving, the held breath"],
+  ["Base", "ambrette (Loire)", "skin, musk, the last hour"],
+];
+
+const BATCHES = [
+  ["Lot 0019/A", "Vat III", "312 flacons", "Grasse", "MMXXIV"],
+  ["Lot 0018/C", "Vat I", "298 flacons", "Grasse", "MMXXIII"],
+  ["Lot 0017/A", "Vat III", "301 flacons", "Grasse", "MMXXIII"],
+  ["Lot 0016/B", "Vat II", "276 flacons", "Grasse", "MMXXII"],
+];
+
+function ScentMist() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const mount = ref.current;
+    if (!mount) return;
+    const w = mount.clientWidth;
+    const h = mount.clientHeight;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 100);
+    camera.position.z = 14;
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(w, h);
+    mount.appendChild(renderer.domElement);
+
+    const COUNT = 520;
+    const positions = new Float32Array(COUNT * 3);
+    const speed = new Float32Array(COUNT);
+    for (let i = 0; i < COUNT; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 26;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 22;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
+      speed[i] = 0.004 + Math.random() * 0.012;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      color: 0x8a8275,
+      size: 0.07,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false,
+    });
+    const pts = new THREE.Points(geo, mat);
+    scene.add(pts);
+
+    let raf;
+    let mx = 0;
+    const onMove = (e) => {
+      mx = (e.clientX / window.innerWidth - 0.5) * 0.6;
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+
+    const tick = () => {
+      const p = geo.attributes.position.array;
+      for (let i = 0; i < COUNT; i++) {
+        p[i * 3 + 1] += speed[i];
+        if (p[i * 3 + 1] > 11) p[i * 3 + 1] = -11;
+      }
+      geo.attributes.position.needsUpdate = true;
+      pts.rotation.y += (mx - pts.rotation.y) * 0.04;
+      renderer.render(scene, camera);
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+
+    const onResize = () => {
+      const nw = mount.clientWidth;
+      const nh = mount.clientHeight;
+      camera.aspect = nw / nh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("resize", onResize);
+      geo.dispose();
+      mat.dispose();
+      renderer.dispose();
+      if (renderer.domElement.parentNode) {
+        renderer.domElement.parentNode.removeChild(renderer.domElement);
+      }
+    };
+  }, []);
+  return <div ref={ref} className="mist" aria-hidden="true" />;
+}
+
+function Flacon() {
+  return (
+    <svg
+      className="flacon"
+      viewBox="0 0 220 360"
+      aria-label="The CÈDRE 19 flacon"
+      role="img"
+    >
+      <defs>
+        <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#2A2620" />
+          <stop offset="0.42" stopColor="#1b1813" />
+          <stop offset="0.5" stopColor="#4a4337" />
+          <stop offset="0.58" stopColor="#15130F" />
+          <stop offset="1" stopColor="#0d0b08" />
+        </linearGradient>
+        <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#5a3a1f" />
+          <stop offset="1" stopColor="#2a1a0d" />
+        </linearGradient>
+        <linearGradient id="cap" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#1a1813" />
+          <stop offset="0.5" stopColor="#564d3c" />
+          <stop offset="1" stopColor="#100e0a" />
+        </linearGradient>
+      </defs>
+
+      {/* shoulders + body — a heavy faceted parfum flacon */}
+      <path
+        d="M55 96 L55 70 Q55 60 65 60 L155 60 Q165 60 165 70 L165 96
+           Q198 120 198 200 L198 312 Q198 340 170 340 L50 340
+           Q22 340 22 312 L22 200 Q22 120 55 96 Z"
+        fill="url(#glass)"
+        stroke="#5a5141"
+        strokeWidth="0.75"
+      />
+      {/* liquid line */}
+      <path
+        d="M30 196 Q30 132 60 108 L160 108 Q190 132 190 196 L190 308
+           Q190 332 168 332 L52 332 Q30 332 30 308 Z"
+        fill="url(#liquid)"
+        opacity="0.55"
+      />
+      {/* specular facet */}
+      <path
+        d="M70 110 L84 110 L60 330 L46 330 Z"
+        fill="#fffaf0"
+        opacity="0.07"
+      />
+      <path d="M150 112 L158 112 L150 326 L142 326 Z" fill="#fffaf0" opacity="0.04" />
+      {/* collar + cap */}
+      <rect x="78" y="44" width="64" height="20" fill="url(#cap)" />
+      <rect x="84" y="14" width="52" height="34" rx="2" fill="url(#cap)" />
+      <rect x="84" y="14" width="14" height="34" rx="2" fill="#fffaf0" opacity="0.06" />
+
+      {/* engraved label — part of the glass, not a sticker */}
+      <text x="110" y="232" textAnchor="middle" className="fl-mark">
+        BÉRARD
+      </text>
+      <line x1="74" y1="244" x2="146" y2="244" stroke="#8a8275" strokeWidth="0.5" opacity="0.5" />
+      <text x="110" y="262" textAnchor="middle" className="fl-sub">
+        CÈDRE 19
+      </text>
+      <text x="110" y="292" textAnchor="middle" className="fl-tiny">
+        EXTRAIT · 24%
+      </text>
+    </svg>
+  );
+}
+
+export default function BerardMaison() {
+  const [progress, setProgress] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const [curs, setCurs] = useState({ x: -100, y: -100 });
+  const regRef = useRef(null);
+  const [regIn, setRegIn] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setRevealed(true), 260);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const max = document.body.scrollHeight - window.innerHeight;
+          setProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e) => setCurs({ x: e.clientX, y: e.clientY });
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) setRegIn(true);
+      },
+      { threshold: 0.18 }
+    );
+    if (regRef.current) obs.observe(regRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  const ground = `rgb(${244 - progress * 8}, ${241 - progress * 10}, ${
+    234 - progress * 11
+  })`;
+
+  const words = OPENING.split(" ");
+
+  return (
+    <div className="maison" style={{ background: ground }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        .maison {
+          --ink:#15130F; --ink2:#2A2620; --muted:#8A8275;
+          --ox:#7A1B12; --rule:#CFC8B8;
+          color:var(--ink2);
+          font-family:'Newsreader',Georgia,serif;
+          min-height:100vh; position:relative;
+          cursor:none; transition:background .4s linear; overflow-x:hidden;
+        }
+        .maison ::selection { background:var(--ox); color:#F4F1EA; }
+        .maison::-webkit-scrollbar { width:9px; }
+        .maison::-webkit-scrollbar-track { background:#ECE7DB; }
+        .maison::-webkit-scrollbar-thumb { background:#bdb4a1; }
+
+        .grain {
+          position:fixed; inset:0; pointer-events:none; z-index:60;
+          opacity:.16; mix-blend-mode:multiply;
+        }
+        .dot {
+          position:fixed; width:7px; height:7px; border-radius:50%;
+          background:var(--ink); pointer-events:none; z-index:80;
+          transform:translate(-50%,-50%); transition:transform .12s ease-out;
+          mix-blend-mode:difference;
+        }
+
+        .mist { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+        .spine {
+          position:fixed; top:0; left:0; height:100vh; width:64px;
+          z-index:40; display:flex; flex-direction:column;
+          align-items:center; justify-content:space-between;
+          padding:30px 0; border-right:1px solid var(--rule);
+          background:transparent;
+        }
+        .spine .mark {
+          font-family:'JetBrains Mono',monospace; font-size:10px;
+          letter-spacing:.34em; color:var(--muted);
+        }
+        .spine .name {
+          writing-mode:vertical-rl; transform:rotate(180deg);
+          font-size:15px; letter-spacing:.55em; color:var(--ink);
+          text-transform:uppercase;
+        }
+        .spine .track { width:1px; flex:1; margin:26px 0;
+          background:var(--rule); position:relative; }
+        .spine .fill {
+          position:absolute; top:0; left:0; width:1px; background:var(--ox);
+          transition:height .1s linear;
+        }
+
+        .wrap { max-width:1180px; margin:0 auto; padding:0 7vw 0 calc(64px + 6vw);
+          position:relative; z-index:10; }
+
+        .folio { font-family:'JetBrains Mono',monospace; font-size:11px;
+          letter-spacing:.28em; color:var(--muted);
+          padding:42px 0 0; }
+
+        .open { min-height:96vh; display:flex; align-items:center;
+          position:relative; }
+        .open .col { max-width:21ch; }
+        .lede {
+          font-size:clamp(2.7rem,5.6vw,5.4rem); line-height:1.02;
+          letter-spacing:-.03em; color:var(--ink); font-weight:400;
+          text-wrap:balance;
+        }
+        .lede .w {
+          display:inline-block;
+          clip-path:inset(0 0 110% 0);
+          transform:translateY(.5em);
+          transition:clip-path 1.05s cubic-bezier(.16,1,.3,1),
+                     transform 1.05s cubic-bezier(.16,1,.3,1);
+        }
+        .lede.in .w { clip-path:inset(-10% 0 -10% 0); transform:translateY(0); }
+        .addr { font-family:'JetBrains Mono',monospace; font-size:11px;
+          letter-spacing:.22em; color:var(--muted); margin-top:34px;
+          text-transform:uppercase; }
+
+        .stage {
+          position:absolute; right:-3vw; top:50%;
+          transform:translateY(-50%); width:min(34vw,420px);
+          z-index:5;
+        }
+        .flacon { width:100%; height:auto; display:block;
+          filter:drop-shadow(0 40px 60px rgba(20,16,12,.34));
+          animation:sway 11s ease-in-out infinite; }
+        @keyframes sway {
+          0%,100% { transform:rotate(-1.1deg) translateY(0); }
+          50% { transform:rotate(1.1deg) translateY(-10px); }
+        }
+        .fl-mark { font-family:'JetBrains Mono',monospace; fill:#cabf9f;
+          font-size:13px; letter-spacing:.34em; }
+        .fl-sub { font-family:'Newsreader',serif; fill:#e6dcbf;
+          font-size:18px; font-style:italic; letter-spacing:.04em; }
+        .fl-tiny { font-family:'JetBrains Mono',monospace; fill:#9c9176;
+          font-size:8px; letter-spacing:.28em; }
+
+        .letter { max-width:64ch; padding:13vh 0;
+          font-size:clamp(1.18rem,1.7vw,1.5rem); line-height:1.78;
+          color:var(--ink2); }
+        .letter p { margin-bottom:1.7em; }
+        .letter .drop::first-letter {
+          font-size:4.2em; line-height:.8; float:left;
+          padding:.06em .14em 0 0; color:var(--ink); font-weight:500;
+        }
+        .pull {
+          font-size:clamp(1.7rem,3.4vw,2.9rem); line-height:1.18;
+          color:var(--ink); font-style:italic; letter-spacing:-.02em;
+          margin:1.2em 0 1.2em -.04em; max-width:18ch; text-wrap:balance;
+        }
+        .marg {
+          float:right; width:15ch; margin:.4em -16ch .6em 2.4em;
+          font-family:'JetBrains Mono',monospace; font-size:10.5px;
+          line-height:1.9; letter-spacing:.12em; color:var(--muted);
+          text-transform:uppercase; border-left:1px solid var(--rule);
+          padding-left:14px;
+        }
+
+        .reg { padding:9vh 0 11vh; max-width:74ch; }
+        .reg h2, .bat h2 {
+          font-family:'JetBrains Mono',monospace; font-size:12px;
+          letter-spacing:.34em; color:var(--muted);
+          text-transform:uppercase; margin-bottom:34px;
+          padding-bottom:14px; border-bottom:1px solid var(--rule);
+        }
+        .row {
+          display:grid; grid-template-columns:7ch 1fr auto;
+          gap:2.5ch; align-items:baseline; padding:18px 0;
+          border-bottom:1px solid var(--rule);
+          opacity:0; transform:translateY(14px);
+          transition:opacity .8s ease, transform .8s cubic-bezier(.16,1,.3,1);
+        }
+        .reg.in .row { opacity:1; transform:none; }
+        .row .stage-l { font-family:'JetBrains Mono',monospace;
+          font-size:10px; letter-spacing:.2em; color:var(--muted);
+          text-transform:uppercase; }
+        .row .note { font-size:1.32rem; color:var(--ink);
+          transition:color .25s; }
+        .row .facet { font-family:'JetBrains Mono',monospace;
+          font-size:11px; letter-spacing:.06em; color:var(--muted);
+          text-align:right; opacity:0; transform:translateX(8px);
+          transition:opacity .3s, transform .3s, color .3s; }
+        .row:hover .note { color:var(--ox); }
+        .row:hover .facet { opacity:1; transform:none; color:var(--ink2); }
+
+        .bat { padding:0 0 12vh; max-width:80ch; }
+        .brow {
+          display:grid;
+          grid-template-columns:11ch 7ch 12ch 1fr auto;
+          gap:2ch; padding:15px 0; align-items:baseline;
+          border-bottom:1px solid var(--rule);
+          font-family:'JetBrains Mono',monospace; font-size:12px;
+          letter-spacing:.07em; color:var(--ink2);
+        }
+        .brow .lot { color:var(--ox); }
+        .brow.head { color:var(--muted); font-size:10px;
+          letter-spacing:.2em; text-transform:uppercase; }
+        .prov { font-family:'Newsreader',serif; font-style:italic;
+          font-size:1.05rem; color:var(--muted); margin-top:26px;
+          max-width:52ch; }
+
+        .close { padding:16vh 0 4vh; max-width:24ch; }
+        .sign {
+          font-size:clamp(2rem,4.4vw,3.6rem); line-height:1.12;
+          color:var(--ink); letter-spacing:-.025em; text-wrap:balance;
+        }
+        .sign em { color:var(--ox); font-style:italic; }
+        .colophon {
+          margin-top:18vh; padding:34px 0 60px;
+          border-top:1px solid var(--rule);
+          display:flex; flex-wrap:wrap; gap:10px 46px;
+          font-family:'JetBrains Mono',monospace; font-size:10.5px;
+          letter-spacing:.2em; color:var(--muted);
+          text-transform:uppercase;
+        }
+        @media (max-width:860px){
+          .stage{ position:relative; right:auto; top:auto;
+            transform:none; width:60vw; margin:6vh 0 0 auto; }
+          .open{ flex-direction:column; align-items:flex-start;
+            min-height:auto; padding:18vh 0 6vh; }
+          .marg{ float:none; width:auto; margin:1.4em 0;
+            border-left:0; border-top:1px solid var(--rule);
+            padding:14px 0 0; }
+          .wrap{ padding:0 7vw 0 calc(64px + 5vw); }
+        }
+      `}</style>
+
+      <svg className="grain">
+        <filter id="n">
+          <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="2" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#n)" />
+      </svg>
+
+      <div className="dot" style={{ left: curs.x, top: curs.y }} />
+      <ScentMist />
+
+      <nav className="spine">
+        <span className="mark">EXT·24</span>
+        <span className="name">Bérard</span>
+        <span className="track">
+          <span className="fill" style={{ height: `${progress * 100}%` }} />
+        </span>
+        <span className="mark">MMXXIV</span>
+      </nav>
+
+      <div className="wrap">
+        <div className="folio">FOLIO 01 — A LETTER, UNABRIDGED</div>
+
+        <section className="open">
+          <div className="col">
+            <h1 className={`lede ${revealed ? "in" : ""}`}>
+              {words.map((w, i) => (
+                <span
+                  key={i}
+                  className="w"
+                  style={{ transitionDelay: `${i * 55}ms` }}
+                >
+                  {w}&nbsp;
+                </span>
+              ))}
+            </h1>
+            <div className="addr">Bérard · Parfumeur · Grasse — to whoever opens this</div>
+          </div>
+          <div className="stage">
+            <Flacon />
+          </div>
+        </section>
+
+        <section className="letter">
+          <p className="drop">
+            I did not set out to make something beautiful. I set out to make
+            something accurate. There is a difference, and most of the industry
+            has spent forty years pretending there is not. A perfume that
+            flatters you is a perfume that is lying to you twice — once about the
+            flower, and once about yourself.
+          </p>
+          <div className="marg">
+            CÈDRE 19<br />
+            Maceration · 9 wks<br />
+            Vat III<br />
+            H.B. ·  initials
+          </div>
+          <p>
+            CÈDRE 19 began as a fault. A batch of orris held too long, gone cold
+            and mineral, sitting beside Virginia cedar that someone had left
+            open. The room did not smell pleasant. It smelled true — like a
+            cabinet you were not supposed to open, in a house you no longer
+            live in.
+          </p>
+          <p className="pull">
+            We macerate for nine weeks because the eighth is a liar.
+          </p>
+          <p>
+            Everything after that was subtraction. Bergamot, because the top had
+            to arrive cold. Pink pepper, for the half-second of static before it
+            settles. Ambrette from the Loire at the very end — not for musk, for
+            skin; so that after six hours the perfume is no longer on you but
+            indistinguishable from you. That is the only effect I have ever
+            cared about.
+          </p>
+        </section>
+
+        <section className="reg" ref={regRef}>
+          <div className={`reg ${regIn ? "in" : ""}`}>
+            <h2>The Olfactory Register — CÈDRE 19</h2>
+            {REGISTER.map(([stage, note, facet], i) => (
+              <div
+                className="row"
+                key={i}
+                style={{ transitionDelay: `${i * 70}ms` }}
+              >
+                <span className="stage-l">{stage}</span>
+                <span className="note">{note}</span>
+                <span className="facet">{facet}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bat">
+          <h2>The Register of Batches</h2>
+          <div className="brow head">
+            <span>Lot</span>
+            <span>Vat</span>
+            <span>Yield</span>
+            <span>Origin</span>
+            <span>Year</span>
+          </div>
+          {BATCHES.map(([lot, vat, yld, origin, yr], i) => (
+            <div className="brow" key={i}>
+              <span className="lot">{lot}</span>
+              <span>{vat}</span>
+              <span>{yld}</span>
+              <span>{origin}</span>
+              <span>{yr}</span>
+            </div>
+          ))}
+          <p className="prov">
+            Virginia cedar; Florentine orris held nine weeks; ambrette from the
+            Loire. Extrait de Parfum · 24% · an edition of nineteen batches,
+            after which the formula is retired and not reissued.
+          </p>
+        </section>
+
+        <section className="close">
+          <div className="sign">
+            Wear it on the days you intend to be remembered. <em>— H.B.</em>
+          </div>
+          <div className="colophon">
+            <span>Bérard</span>
+            <span>Parfumeur</span>
+            <span>Grasse · FR</span>
+            <span>Est. MMXIX</span>
+            <span>Extrait · 24%</span>
+            <span>This page is the entire advertisement</span>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
