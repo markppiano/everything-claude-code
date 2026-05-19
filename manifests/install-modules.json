@@ -578,6 +578,28 @@
       "defaultInstall": false,
       "cost": "medium",
       "stability": "stable"
+    },
+    {
+      "id": "creative-design",
+      "kind": "skills",
+      "description": "Creative and design skills, including game development orchestration.",
+      "paths": [
+        "skills/game-development"
+      ],
+      "targets": [
+        "claude",
+        "cursor",
+        "antigravity",
+        "codex",
+        "opencode",
+        "codebuddy"
+      ],
+      "dependencies": [
+        "platform-configs"
+      ],
+      "defaultInstall": false,
+      "cost": "medium",
+      "stability": "stable"
     }
   ]
 }
