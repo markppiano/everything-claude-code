@@ -30,5 +30,14 @@ module.exports = [
         languageOptions: {
             sourceType: 'module'
         }
+    },
+    {
+        files: ['piano-game/**/*.js'],
+        languageOptions: {
+            sourceType: 'script',
+            globals: {
+                ...globals.browser
+            }
+        }
     }
 ];

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Piano Rock Star</title>
+	<link rel="stylesheet" type="text/css" href="style/style.css">
+	<script defer src="js/musickey.js"></script>
+	<script defer src="js/keycode.js"></script>
+	<script defer src="js/song.js"></script>
+	<script defer src="js/piano.js"></script>
+	<script defer src="js/keyboard.js"></script>
+	<script defer src="js/game.js"></script>
+</head>
+<body>
+	<div class="app">
+		<header class="topbar">
+			<div class="brand">
+				<span class="brand-mark">PRS</span>
+				<span class="brand-name">Piano Rock Star</span>
+			</div>
+			<div class="hud">
+				<div class="hud-item"><span class="hud-label">Score</span><span id="score">0</span></div>
+				<div class="hud-item"><span class="hud-label">Combo</span><span id="combo">0</span></div>
+				<div class="hud-item"><span class="hud-label">Accuracy</span><span id="accuracy">100%</span></div>
+			</div>
+		</header>
+
+		<section class="controls">
+			<label class="control">
+				<span>Song</span>
+				<select id="songSelect"></select>
+			</label>
+			<label class="control">
+				<span>Difficulty</span>
+				<select id="tempoSelect">
+					<option value="1.35">Easy</option>
+					<option value="1" selected>Normal</option>
+					<option value="0.72">Hard</option>
+				</select>
+			</label>
+			<button id="listenBtn" type="button" class="btn btn-ghost">Listen</button>
+			<button id="startBtn" type="button" class="btn btn-primary">Start</button>
+			<button id="stopBtn" type="button" class="btn" disabled>Stop</button>
+			<span class="hint">Play with your computer keyboard or click the keys</span>
+		</section>
+
+		<section class="highway" id="highway">
+			<div class="hitline"></div>
+			<div class="lane" id="lane"></div>
+			<div class="judge" id="judge"></div>
+		</section>
+
+		<div id="piano" class="pianoKeys">
+			<div id="keyC" class="key" data-note="C4"><div class="keyText keyboardText">C</div></div>
+			<div id="sharpC" class="sharp sharpC" data-note="C#4"><div class="sharpText keyboardText">C#</div></div>
+			<div id="keyD" class="key" data-note="D4"><div class="keyText keyboardText">D</div></div>
+			<div id="sharpD" class="sharp sharpD" data-note="D#4"><div class="sharpText keyboardText">D#</div></div>
+			<div id="keyE" class="key" data-note="E4"><div class="keyText keyboardText">E</div></div>
+			<div id="keyF" class="key" data-note="F4"><div class="keyText keyboardText">F</div></div>
+			<div id="sharpF" class="sharp sharpF" data-note="F#4"><div class="sharpText keyboardText">F#</div></div>
+			<div id="keyG" class="key" data-note="G4"><div class="keyText keyboardText">G</div></div>
+			<div id="sharpG" class="sharp sharpG" data-note="G#4"><div class="sharpText keyboardText">G#</div></div>
+			<div id="keyA" class="key" data-note="A4"><div class="keyText keyboardText">A</div></div>
+			<div id="sharpA" class="sharp sharpA" data-note="A#4"><div class="sharpText keyboardText">A#</div></div>
+			<div id="keyB" class="key" data-note="B4"><div class="keyText keyboardText">B</div></div>
+			<div id="keyC1" class="key" data-note="C5"><div class="keyText keyboardText">C</div></div>
+			<div id="sharpC1" class="sharp sharpC1" data-note="C#5"><div class="sharpText keyboardText">C#</div></div>
+			<div id="keyD1" class="key" data-note="D5"><div class="keyText keyboardText">D</div></div>
+			<div id="sharpD1" class="sharp sharpD1" data-note="D#5"><div class="sharpText keyboardText">D#</div></div>
+			<div id="keyE1" class="key" data-note="E5"><div class="keyText keyboardText">E</div></div>
+			<div id="keyF1" class="key" data-note="F5"><div class="keyText keyboardText">F</div></div>
+		</div>
+
+		<footer class="footer">Built with the Web Audio API &middot; no dependencies</footer>
+	</div>
+
+	<div id="results" class="results hidden">
+		<div class="results-card">
+			<div class="results-rank" id="resultsRank">ROCK STAR</div>
+			<div class="results-line">Score <strong id="resultsScore">0</strong></div>
+			<div class="results-line">Accuracy <strong id="resultsAccuracy">0%</strong></div>
+			<div class="results-line">Best combo <strong id="resultsCombo">0</strong></div>
+			<button id="resultsClose" type="button" class="btn btn-primary">Play again</button>
+		</div>
+	</div>
+</body>
+</html>
